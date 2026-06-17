@@ -10,10 +10,9 @@ function ScanContent() {
   const allergen = allergenDatabase[checkType] || allergenDatabase.gluten;
 
   const [mode, setMode] = useState('camera'); // 'camera' | 'upload'
-  const [stage, setStage] = useState('capture'); // 'capture' | 'processing' | 'edit' | 'results'
+  const [stage, setStage] = useState('capture'); // 'capture' | 'processing' | 'results'
   const [imageData, setImageData] = useState(null);
   const [ocrText, setOcrText] = useState('');
-  const [editedText, setEditedText] = useState('');
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
   const [results, setResults] = useState(null);
@@ -154,34 +153,28 @@ function ScanContent() {
       });
 
       setProgress(95);
-      setProgressMsg('Extracting ingredients...');
+      setProgressMsg('Analyzing ingredients...');
 
       const text = result.data.text || '';
       setOcrText(text);
-      setEditedText(text);
       setProgress(100);
 
-      // Short delay before showing editor
-      setTimeout(() => setStage('edit'), 400);
+      // Immediately analyze and show results
+      const ingredients = parseIngredients(text);
+      const res = analyzeIngredients(ingredients, checkType);
+      setResults(res);
+      setStage('results');
     } catch (err) {
       console.error('OCR Error:', err);
       setProgressMsg('OCR failed. Please try again or upload a clearer image.');
     }
   };
 
-  // Analyze
-  const handleAnalyze = () => {
-    const ingredients = parseIngredients(editedText);
-    const res = analyzeIngredients(ingredients, checkType);
-    setResults(res);
-    setStage('results');
-  };
 
   // Reset
   const handleReset = () => {
     setImageData(null);
     setOcrText('');
-    setEditedText('');
     setResults(null);
     setProgress(0);
     setStage('capture');
@@ -293,40 +286,6 @@ function ScanContent() {
         </>
       )}
 
-      {/* Edit Stage */}
-      {stage === 'edit' && (
-        <>
-          {imageData && (
-            <div className="capture-area capture-area--solid" style={{ marginBottom: '16px' }}>
-              <img src={imageData} alt="Captured label" className="capture-preview" />
-            </div>
-          )}
-          <div className="text-editor">
-            <div className="text-editor-label">
-              <span className="text-editor-title">Extracted Ingredients</span>
-              <span className="text-editor-hint">Edit if needed for accuracy</span>
-            </div>
-            <textarea
-              className="text-editor-area"
-              value={editedText}
-              onChange={(e) => setEditedText(e.target.value)}
-              placeholder="Ingredients text will appear here..."
-            />
-          </div>
-          <div className="btn-group">
-            <button className="btn btn-secondary" onClick={handleReset}>
-              ✕ Retake
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={handleAnalyze}
-              disabled={!editedText.trim()}
-            >
-              🔍 Analyze for {allergen.label}
-            </button>
-          </div>
-        </>
-      )}
 
       {/* Results Stage */}
       {stage === 'results' && results && (
